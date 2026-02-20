@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>사진 견적서_제품명</title>
+    <style>
+        :root { --main-blue: #2980b9; --text-color: #2c3e50; --bg-grey: #f0f2f5; --border-color: #dee2e6; }
+        body { font-family: 'Pretendard', sans-serif; background: var(--bg-grey); padding: 30px; display: flex; flex-direction: column; align-items: center; }
+        
+        .paper { 
+            width: 100%; max-width: 1000px; background: white; padding: 50px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1); border-radius: 8px; box-sizing: border-box;
+        }
+
+        .header { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 3px solid var(--text-color); padding-bottom: 20px; margin-bottom: 30px; }
+        .header h1 { margin: 0; font-size: 2.2rem; }
+
+        /* 이미지 영역 (가로 꽉 차게) */
+        .photo-container {
+            width: 100%; background: #fafafa; border: 2px dashed var(--border-color);
+            border-radius: 8px; position: relative; min-height: 450px;
+            display: flex; align-items: center; justify-content: center; cursor: pointer;
+        }
+        .photo-container img { width: 100%; height: auto; display: none; object-fit: contain; max-height: 800px; }
+        .placeholder-text { text-align: center; color: #95a5a6; }
+
+        /* 정보 입력 영역 */
+        .info-container { margin-top: 30px; border-top: 2px solid var(--text-color); }
+        
+        /* 제품명 & 규격 (한 줄씩) */
+        .input-row { display: flex; border-bottom: 1px solid var(--border-color); }
+        .label { width: 120px; background: #f8f9fa; padding: 15px; font-weight: bold; border-right: 1px solid var(--border-color); display: flex; align-items: center; }
+        .value { flex: 1; padding: 10px; }
+        .value input { width: 100%; border: none; padding: 8px; font-size: 1rem; outline: none; }
+
+        /* 단가, 수량, 합계 가로 배치 (중요 수정 부분) */
+        .pricing-grid { display: grid; grid-template-columns: 1.5fr 1fr 1.5fr; border-bottom: 1px solid var(--border-color); }
+        .price-box, .qty-box, .total-box { display: flex; align-items: center; padding: 10px; border-right: 1px solid var(--border-color); }
+        .total-box { border-right: none; background: #fffdf0; } /* 합계 영역 배경 강조 */
+        
+        .mini-label { font-size: 0.85rem; color: #7f8c8d; margin-right: 10px; white-space: nowrap; font-weight: bold; }
+        .pricing-grid input { width: 100%; border: none; font-size: 1.1rem; outline: none; background: transparent; text-align: right; font-weight: bold; }
+        .unit { margin-left: 5px; font-size: 0.9rem; color: #7f8c8d; }
+
+        /* 최종 합계 (강조) */
+        .big-total { 
+            margin-top: 20px; text-align: right; font-size: 1.8rem; font-weight: 300; 
+            padding: 20px; background: var(--text-color); color: white; border-radius: 4px;
+        }
+        .big-total span { color: #f1c40f; font-weight: 800; }
+
+        .no-print { margin-bottom: 20px; display: flex; gap: 15px; }
+        .btn-print { padding: 10px 25px; border-radius: 5px; border: none; background: var(--main-blue); color: white; cursor: pointer; font-weight: bold; }
+
+        @media print { .no-print { display: none; } .paper { box-shadow: none; padding: 0; width: 100%; } }
+    </style>
+</head>
+<body>
+
+    <div class="no-print">
+        <button class="btn-print" onclick="window.print()">🖨️ PDF 저장 / 인쇄</button>
+        <span style="align-self: center; font-size: 0.9rem; color: #666;">캡처 후 <b>Ctrl+V</b>로 이미지를 넣으세요.</span>
+    </div>
+
+    <div class="paper">
+        <div class="header">
+            <h1>사진 견적서</h1>
+            <div style="text-align: right; font-size: 0.9rem;">
+                번호: <input type="text" value="EST-001" style="border:none; border-bottom: 1px solid #ccc; width: 80px; text-align: right;"><br>
+                일자: <input type="text" id="dateInput" style="border:none; width: 100px; text-align: right;">
+            </div>
+        </div>
+
+        <div class="photo-container" id="dropZone" onclick="document.getElementById('fileInput').click()">
+            <div class="placeholder-text" id="placeholder">
+                <p style="font-size: 3rem; margin: 0;">🖼️</p>
+                <p>클릭하여 업로드하거나 캡처 이미지 붙여넣기(Ctrl+V)</p>
+            </div>
+            <img id="preview" src="">
+            <input type="file" id="fileInput" accept="image/*" style="display:none;" onchange="handleFile(this.files[0])">
+        </div>
+
+        <div class="info-container">
+            <div class="input-row">
+                <div class="label">제품명</div>
+                <div class="value"><input type="text" placeholder="제품 이름을 입력하세요"></div>
+            </div>
+            <div class="input-row">
+                <div class="label">모델/규격</div>
+                <div class="value"><input type="text" placeholder="사이즈, 컬러 등 사양 입력"></div>
+            </div>
+            
+            <div class="pricing-grid">
+                <div class="price-box">
+                    <span class="mini-label">공급단가</span>
+                    <input type="number" id="price" value="0" oninput="calc()">
+                    <span class="unit">원</span>
+                </div>
+                <div class="qty-box">
+                    <span class="mini-label">수량</span>
+                    <input type="number" id="qty" value="1" oninput="calc()">
+                    <span class="unit">EA</span>
+                </div>
+                <div class="total-box">
+                    <span class="mini-label">소계</span>
+                    <input type="text" id="subtotal" value="0" readonly>
+                    <span class="unit">원</span>
+                </div>
+            </div>
+
+            <div class="input-row">
+                <div class="label">비고</div>
+                <div class="value"><input type="text" placeholder="특이사항"></div>
+            </div>
+        </div>
+
+        <div class="big-total">
+            Total Amount: <span id="finalPrice">0</span> 원
+        </div>
+    </div>
+
+    <script>
+        // 오늘 날짜 설정
+        document.getElementById('dateInput').value = new Date().toISOString().substring(0, 10);
+
+        function handleFile(file) {
+            if (file && file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = document.getElementById('preview');
+                    img.src = e.target.result;
+                    img.style.display = 'block';
+                    document.getElementById('placeholder').style.display = 'none';
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        // 붙여넣기 이벤트
+        window.addEventListener('paste', (e) => {
+            const items = e.clipboardData.items;
+            for (let item of items) {
+                if (item.type.indexOf('image') !== -1) {
+                    handleFile(item.getAsFile());
+                }
+            }
+        });
+
+        // 합계 계산
+        function calc() {
+            const price = document.getElementById('price').value || 0;
+            const qty = document.getElementById('qty').value || 0;
+            const total = price * qty;
+            document.getElementById('subtotal').value = total.toLocaleString();
+            document.getElementById('finalPrice').innerText = total.toLocaleString();
+        }
+    </script>
+</body>
+</html>
